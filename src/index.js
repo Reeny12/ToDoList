@@ -20,14 +20,45 @@ app.get("/signup", (req, res) => {
     res.render("signup")
 })
 
-app.post("signup", async (req, res) => {
+app.post("/signup", async (req, res) => {
     const data = {
         name: req.body.username,
         password: req.body.password
     }
-const userdata = await collection.insertMany(data);
-console.log(userdata);
+
+    const existingUser = await collection.findOne({name: data.name});
+    if(existingUser){
+        res.send("User already exists, please choose a different username.");
+    }else{
+        const saltRounds = 10;
+        const hashedPassword = await bcrypt.hash(data.password, saltRounds);
+        console.log(hashedPassword)
+
+        hashedPassword = data.password;
+
+        const userdata = await collection.insertMany(data);
+        console.log(userdata);
+    }
 })
+
+app.post("/login", async(req, res) => { // Added login route
+    try{
+        const check = await collection.findOne({name: req.body.username});
+        if(!check){
+            res.send("Username cannot be found");
+            return;
+        }
+
+        const isPasswordMatch = await bcrypt.compare(req.body.password, check.password);
+        if(isPasswordMatch){
+            res.send("Logged in successfully")
+        }else{
+            res.send("Wrong password");
+        }
+    }catch{
+        res.send("Wrong Username or Password");
+    }
+});
 
 const port = 5000;
 app.listen(port, () => {
